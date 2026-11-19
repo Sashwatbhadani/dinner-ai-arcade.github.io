@@ -2,230 +2,360 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
- <script src="https://cdn.jsdelivr.net/npm/@discord/embedded-app-sdk@latest/output/browser/embeddedApp.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Dinner AI Arcade</title>
+
 <style>
-*{box-sizing:border-box}
-body{
- margin:0;background:#100d1c;color:white;
- font-family:Arial,sans-serif;text-align:center;
- padding:18px 10px;
+* {
+  box-sizing: border-box;
 }
-h1{color:#c4a5ff;font-size:25px}
-#score{font-size:21px;font-weight:bold;margin:12px}
-canvas{
- display:block;width:100%;max-width:400px;
- height:auto;margin:auto;
- border:4px solid #9b70ff;border-radius:15px;
- touch-action:none;
+
+body {
+  margin: 0;
+  background: #100d1c;
+  color: white;
+  font-family: Arial, sans-serif;
+  text-align: center;
+  padding: 18px 10px;
 }
-button{
- margin-top:15px;padding:14px 35px;
- border:0;border-radius:12px;
- background:#8b5cf6;color:white;
- font-size:18px;font-weight:bold;
+
+h1 {
+  color: #c4a5ff;
+  font-size: 25px;
 }
-p{color:#c8bddf;font-size:14px}
+
+#score {
+  font-size: 21px;
+  font-weight: bold;
+  margin: 12px;
+}
+
+#discordStatus {
+  color: #c8bddf;
+  font-size: 12px;
+  margin: 8px;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  max-width: 400px;
+  height: auto;
+  margin: auto;
+  border: 4px solid #9b70ff;
+  border-radius: 15px;
+  touch-action: none;
+}
+
+button {
+  margin-top: 15px;
+  padding: 14px 35px;
+  border: 0;
+  border-radius: 12px;
+  background: #8b5cf6;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+p {
+  color: #c8bddf;
+  font-size: 14px;
+}
 </style>
 </head>
+
 <body>
 
 <h1>🐦 DINNER AI ARCADE</h1>
+
 <div id="score">Score: 0 | Best: 0</div>
+<div id="discordStatus">Preparing game...</div>
 
 <canvas id="game" width="400" height="560"></canvas>
 
 <button id="start">START GAME</button>
+
 <p>Tap anywhere on the game to flap!</p>
 
-<script>
-const canvas=document.getElementById("game");
-const ctx=canvas.getContext("2d");
-const scoreText=document.getElementById("score");
-const startButton=document.getElementById("start");
+<script type="module">
+
+// ==================================
+// DISCORD EMBEDDED APP SDK
+// ==================================
+
+import { DiscordSDK } from
+"https://esm.sh/@discord/embedded-app-sdk";
+
+const APPLICATION_ID = "1571901957923151934";
+
+const discordSdk = new DiscordSDK(APPLICATION_ID);
+
+const discordStatus =
+document.getElementById("discordStatus");
+
+async function connectDiscord() {
+  try {
+    await discordSdk.ready();
+
+    discordStatus.textContent =
+    "💜 Connected to Discord Activity!";
+
+    console.log("Dinner AI Arcade connected!");
+
+  } catch (error) {
+    discordStatus.textContent =
+    "Browser mode • Open inside Discord to connect";
+
+    console.log("Discord connection unavailable:", error);
+  }
+}
+
+connectDiscord();
+
+
+// ==================================
+// FLAPPY BIRD GAME
+// ==================================
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const scoreText = document.getElementById("score");
+const startButton = document.getElementById("start");
 
 let bird;
-let pipes=[];
-let score=0;
-let best=Number(localStorage.getItem("dinnerBest")||0);
-let running=false;
-let started=false;
-let frame=0;
-let animationStarted=false;
+let pipes = [];
+let score = 0;
 
-function newBird(){
- return {x:90,y:260,velocity:0};
+let best = Number(
+  localStorage.getItem("dinnerBest") || 0
+);
+
+let running = false;
+let started = false;
+let frame = 0;
+
+function newBird() {
+  return {
+    x: 90,
+    y: 260,
+    velocity: 0
+  };
 }
 
-bird=newBird();
+bird = newBird();
 
-function startGame(){
- bird=newBird();
- pipes=[];
- score=0;
- frame=0;
- running=true;
- started=true;
- startButton.textContent="RESTART";
+function startGame() {
+  bird = newBird();
+  pipes = [];
+  score = 0;
+  frame = 0;
+  running = true;
+  started = true;
+
+  startButton.textContent = "RESTART";
 }
 
-function flap(){
- if(!started){
-  startGame();
-  return;
- }
- if(!running){
-  startGame();
-  return;
- }
- bird.velocity=-6.5;
-}
-
-function gameOver(){
- running=false;
- startButton.textContent="PLAY AGAIN";
- if(score>best){
-  best=score;
-  localStorage.setItem("dinnerBest",best);
- }
-}
-
-function drawBird(){
- ctx.save();
- ctx.translate(bird.x,bird.y);
-
- ctx.fillStyle="#ffda35";
- ctx.beginPath();
- ctx.arc(0,0,15,0,Math.PI*2);
- ctx.fill();
-
- ctx.fillStyle="#ffffff";
- ctx.beginPath();
- ctx.arc(6,-6,5,0,Math.PI*2);
- ctx.fill();
-
- ctx.fillStyle="#222222";
- ctx.beginPath();
- ctx.arc(8,-6,2,0,Math.PI*2);
- ctx.fill();
-
- ctx.fillStyle="#ff8735";
- ctx.beginPath();
- ctx.moveTo(13,0);
- ctx.lineTo(25,5);
- ctx.lineTo(13,8);
- ctx.fill();
-
- ctx.restore();
-}
-
-function drawPipes(){
- pipes.forEach(p=>{
-  ctx.fillStyle="#239c48";
-  ctx.fillRect(p.x,0,55,p.top);
-  ctx.fillRect(p.x-5,p.top-18,65,18);
-
-  ctx.fillRect(p.x,p.top+p.gap,55,560);
-  ctx.fillRect(p.x-5,p.top+p.gap,65,18);
- });
-}
-
-function update(){
- if(!running)return;
-
- frame++;
-
- bird.velocity+=0.32;
- bird.y+=bird.velocity;
-
- if(frame%95===0){
-  const top=75+Math.random()*220;
-  pipes.push({x:410,top:top,gap:165,passed:false});
- }
-
- pipes.forEach(p=>{
-  p.x-=2.7;
-
-  if(!p.passed&&p.x+55<bird.x){
-   p.passed=true;
-   score++;
+function flap() {
+  if (!started || !running) {
+    startGame();
+    return;
   }
 
-  const hitX=bird.x+12>p.x&&bird.x-12<p.x+55;
-  const hitY=bird.y-12<p.top||bird.y+12>p.top+p.gap;
-
-  if(hitX&&hitY)gameOver();
- });
-
- pipes=pipes.filter(p=>p.x>-70);
-
- if(bird.y>525||bird.y<0)gameOver();
+  bird.velocity = -6.5;
 }
 
-function draw(){
- ctx.clearRect(0,0,400,560);
+function gameOver() {
+  if (!running) return;
 
- const sky=ctx.createLinearGradient(0,0,0,560);
- sky.addColorStop(0,"#55bff5");
- sky.addColorStop(1,"#d5f5ff");
- ctx.fillStyle=sky;
- ctx.fillRect(0,0,400,560);
+  running = false;
+  startButton.textContent = "PLAY AGAIN";
 
- // Clouds
- ctx.fillStyle="white";
- [[60,90],[280,140],[180,45]].forEach(([x,y])=>{
+  if (score > best) {
+    best = score;
+
+    localStorage.setItem(
+      "dinnerBest",
+      best
+    );
+  }
+}
+
+function drawBird() {
+  ctx.save();
+
+  ctx.translate(bird.x, bird.y);
+
+  ctx.fillStyle = "#ffda35";
   ctx.beginPath();
-  ctx.arc(x,y,21,0,Math.PI*2);
-  ctx.arc(x+23,y,16,0,Math.PI*2);
+  ctx.arc(0, 0, 15, 0, Math.PI * 2);
   ctx.fill();
- });
 
- update();
- drawPipes();
- drawBird();
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(6, -6, 5, 0, Math.PI * 2);
+  ctx.fill();
 
- ctx.fillStyle="#388e3c";
- ctx.fillRect(0,540,400,20);
+  ctx.fillStyle = "#222222";
+  ctx.beginPath();
+  ctx.arc(8, -6, 2, 0, Math.PI * 2);
+  ctx.fill();
 
- scoreText.textContent="Score: "+score+" | Best: "+best;
+  ctx.fillStyle = "#ff8735";
+  ctx.beginPath();
+  ctx.moveTo(13, 0);
+  ctx.lineTo(25, 5);
+  ctx.lineTo(13, 8);
+  ctx.fill();
 
- if(!started){
-  ctx.fillStyle="#18233a";
-  ctx.font="bold 25px Arial";
-  ctx.textAlign="center";
-  ctx.fillText("READY TO FLY?",200,330);
- }else if(!running){
-  ctx.fillStyle="#18233a";
-  ctx.font="bold 28px Arial";
-  ctx.textAlign="center";
-  ctx.fillText("GAME OVER!",200,270);
-  ctx.font="19px Arial";
-  ctx.fillText("Score: "+score,200,305);
- }
-
- requestAnimationFrame(draw);
+  ctx.restore();
 }
 
-canvas.addEventListener("pointerdown",e=>{
- e.preventDefault();
- flap();
-});
+function drawPipes() {
+  pipes.forEach(p => {
+    ctx.fillStyle = "#239c48";
 
-startButton.addEventListener("click",startGame);
+    ctx.fillRect(p.x, 0, 55, p.top);
+    ctx.fillRect(p.x - 5, p.top - 18, 65, 18);
 
-document.addEventListener("keydown",e=>{
- if(e.code==="Space"){
+    ctx.fillRect(
+      p.x,
+      p.top + p.gap,
+      55,
+      560
+    );
+
+    ctx.fillRect(
+      p.x - 5,
+      p.top + p.gap,
+      65,
+      18
+    );
+  });
+}
+
+function update() {
+  if (!running) return;
+
+  frame++;
+
+  bird.velocity += 0.32;
+  bird.y += bird.velocity;
+
+  if (frame % 95 === 0) {
+    const top = 75 + Math.random() * 220;
+
+    pipes.push({
+      x: 410,
+      top: top,
+      gap: 165,
+      passed: false
+    });
+  }
+
+  pipes.forEach(p => {
+    p.x -= 2.7;
+
+    if (!p.passed && p.x + 55 < bird.x) {
+      p.passed = true;
+      score++;
+    }
+
+    const hitX =
+      bird.x + 12 > p.x &&
+      bird.x - 12 < p.x + 55;
+
+    const hitY =
+      bird.y - 12 < p.top ||
+      bird.y + 12 > p.top + p.gap;
+
+    if (hitX && hitY) {
+      gameOver();
+    }
+  });
+
+  pipes = pipes.filter(p => p.x > -70);
+
+  if (bird.y > 525 || bird.y < 0) {
+    gameOver();
+  }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, 400, 560);
+
+  const sky = ctx.createLinearGradient(
+    0, 0, 0, 560
+  );
+
+  sky.addColorStop(0, "#55bff5");
+  sky.addColorStop(1, "#d5f5ff");
+
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, 400, 560);
+
+  // Clouds
+  ctx.fillStyle = "white";
+
+  [[60, 90], [280, 140], [180, 45]]
+  .forEach(([x, y]) => {
+    ctx.beginPath();
+    ctx.arc(x, y, 21, 0, Math.PI * 2);
+    ctx.arc(x + 23, y, 16, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  update();
+  drawPipes();
+  drawBird();
+
+  ctx.fillStyle = "#388e3c";
+  ctx.fillRect(0, 540, 400, 20);
+
+  scoreText.textContent =
+    "Score: " + score + " | Best: " + best;
+
+  if (!started) {
+    ctx.fillStyle = "#18233a";
+    ctx.font = "bold 25px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("READY TO FLY?", 200, 330);
+
+  } else if (!running) {
+    ctx.fillStyle = "#18233a";
+    ctx.font = "bold 28px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("GAME OVER!", 200, 270);
+
+    ctx.font = "19px Arial";
+    ctx.fillText("Score: " + score, 200, 305);
+  }
+
+  requestAnimationFrame(draw);
+}
+
+// Controls
+
+canvas.addEventListener("pointerdown", e => {
   e.preventDefault();
   flap();
- }
 });
 
-if(!animationStarted){
- animationStarted=true;
- draw();
-}
+startButton.addEventListener("click", startGame);
+
+document.addEventListener("keydown", e => {
+  if (e.code === "Space") {
+    e.preventDefault();
+    flap();
+  }
+});
+
+// Start animation
+
+draw();
+
 </script>
 </body>
 </html>
