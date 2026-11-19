@@ -1,1 +1,231 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dinner AI Arcade - Flappy Bird</title>
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #100d1c;
+  color: white;
+  font-family: Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+#game {
+  width: min(94vw, 420px);
+  text-align: center;
+}
+
+h1 {
+  color: #c4a5ff;
+  margin: 0 0 8px;
+}
+
+#score {
+  font-size: 22px;
+  font-weight: bold;
+  margin: 10px;
+}
+
+canvas {
+  width: 100%;
+  display: block;
+  border: 3px solid #9b70ff;
+  border-radius: 14px;
+  background: #77d5ff;
+  touch-action: manipulation;
+}
+
+button {
+  background: #8b5cf6;
+  color: white;
+  border: 0;
+  border-radius: 10px;
+  padding: 13px 25px;
+  font-size: 17px;
+  font-weight: bold;
+  margin-top: 12px;
+}
+
+p {
+  color: #c8bddf;
+  font-size: 13px;
+}
+</style>
+</head>
+
+<body>
+<div id="game">
+  <h1>🐦 DINNER AI ARCADE</h1>
+  <div id="score">Score: 0 | Best: 0</div>
+  <canvas id="c" width="400" height="560"></canvas>
+  <button id="start">START GAME</button>
+  <p>Tap the screen or press SPACE to flap!</p>
+</div>
+
+<script>
+const c = document.getElementById("c");
+const ctx = c.getContext("2d");
+const scoreBox = document.getElementById("score");
+const startBtn = document.getElementById("start");
+
+let bird, pipes, score, best = 0;
+let playing = false;
+let started = false;
+let frame = 0;
+
+function reset() {
+  bird = { x: 90, y: 250, v: 0 };
+  pipes = [];
+  score = 0;
+  frame = 0;
+  started = true;
+  playing = true;
+  startBtn.textContent = "RESTART";
+}
+
+function flap() {
+  if (!started || !playing) {
+    reset();
+    return;
+  }
+  bird.v = -6.5;
+}
+
+function endGame() {
+  playing = false;
+  startBtn.textContent = "PLAY AGAIN";
+  if (score > best) best = score;
+}
+
+function draw() {
+  ctx.clearRect(0, 0, 400, 560);
+
+  let sky = ctx.createLinearGradient(0, 0, 0, 560);
+  sky.addColorStop(0, "#65c9ff");
+  sky.addColorStop(1, "#d3f4ff");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, 400, 560);
+
+  ctx.fillStyle = "#fff";
+  [[60,85],[270,130],[180,45]].forEach(([x,y]) => {
+    ctx.beginPath();
+    ctx.arc(x, y, 22, 0, Math.PI * 2);
+    ctx.arc(x + 22, y, 17, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  if (playing) {
+    frame++;
+    bird.v += 0.32;
+    bird.y += bird.v;
+
+    if (frame % 95 === 0) {
+      let gap = 155;
+      let top = 80 + Math.random() * 210;
+      pipes.push({ x: 410, top, gap, passed: false });
+    }
+
+    pipes.forEach(p => {
+      p.x -= 2.6;
+
+      if (!p.passed && p.x + 52 < bird.x) {
+        p.passed = true;
+        score++;
+      }
+
+      if (
+        bird.x + 13 > p.x &&
+        bird.x - 13 < p.x + 52 &&
+        (bird.y - 12 < p.top ||
+         bird.y + 12 > p.top + p.gap)
+      ) {
+        endGame();
+      }
+    });
+
+    pipes = pipes.filter(p => p.x > -60);
+
+    if (bird.y > 545 || bird.y < 0) {
+      endGame();
+    }
+  }
+
+  pipes.forEach(p => {
+    ctx.fillStyle = "#27a84b";
+    ctx.fillRect(p.x, 0, 52, p.top);
+    ctx.fillRect(p.x - 5, p.top - 18, 62, 18);
+    ctx.fillRect(p.x, p.top + p.gap, 52, 560);
+    ctx.fillRect(p.x - 5, p.top + p.gap, 62, 18);
+  });
+
+  if (bird) {
+    ctx.fillStyle = "#ffdb35";
+    ctx.beginPath();
+    ctx.arc(bird.x, bird.y, 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(bird.x + 5, bird.y - 5, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#222";
+    ctx.beginPath();
+    ctx.arc(bird.x + 7, bird.y - 5, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#ff8735";
+    ctx.beginPath();
+    ctx.moveTo(bird.x + 12, bird.y);
+    ctx.lineTo(bird.x + 25, bird.y + 5);
+    ctx.lineTo(bird.x + 12, bird.y + 8);
+    ctx.fill();
+  }
+
+  ctx.fillStyle = "#388e3c";
+  ctx.fillRect(0, 540, 400, 20);
+
+  scoreBox.textContent = "Score: " + score + " | Best: " + best;
+
+  if (!started) {
+    ctx.fillStyle = "#18233a";
+    ctx.font = "bold 25px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("READY TO FLY?", 200, 280);
+  } else if (!playing) {
+    ctx.fillStyle = "#18233a";
+    ctx.font = "bold 27px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("GAME OVER!", 200, 260);
+    ctx.font = "18px Arial";
+    ctx.fillText("Your score: " + score, 200, 295);
+  }
+
+  requestAnimationFrame(draw);
+}
+
+c.addEventListener("pointerdown", flap);
+
+document.addEventListener("keydown", e => {
+  if (e.code === "Space") {
+    e.preventDefault();
+    flap();
+  }
+});
+
+startBtn.addEventListener("click", reset);
+
+draw();
+</script>
+</body>
+</html>
